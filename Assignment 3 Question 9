@@ -1,0 +1,51 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
+from sklearn.datasets import fetch_openml
+import time
+from urllib.error import URLError
+
+# Retry logic to download MNIST dataset
+max_retries = 3  # Maximum number of retries
+delay = 5        # Delay between retries (seconds)
+
+for attempt in range(max_retries):
+    try:
+        X, y = fetch_openml('mnist_784', version=1, return_X_y=True)
+        print("MNIST dataset successfully downloaded.")
+        break  # Download successful, break the loop
+    except URLError:
+        if attempt < max_retries - 1:
+            print(f"Download failed, retrying in {delay} seconds...")
+            time.sleep(delay)
+        else:
+            raise RuntimeError("Failed to download MNIST dataset after retries.")
+
+# Normalize the pixel values
+X = X / 255.0
+
+# Split the dataset into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Create a one-versus-all classifier
+clf = SVC(kernel='rbf', C=1, gamma=0.01)  # You can tune these hyperparameters
+
+# Train and evaluate the classifier for each digit
+accuracies = []
+for digit in range(10):
+    y_train_binary = (y_train == str(digit)).astype(int)
+    y_test_binary = (y_test == str(digit)).astype(int)
+
+    clf.fit(X_train, y_train_binary)
+    y_pred = clf.predict(X_test)
+
+    accuracy = accuracy_score(y_test_binary, y_pred)
+    accuracies.append(accuracy)
+
+    print(f"Accuracy for digit {digit}: {accuracy:.2f}")
+
+# Calculate the overall accuracy
+average_accuracy = np.mean(accuracies)
+print(f"Average accuracy: {average_accuracy:.2f}")
